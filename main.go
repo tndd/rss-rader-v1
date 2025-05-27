@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/chromedp/chromedp"
@@ -23,6 +24,7 @@ func main() {
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-sandbox", true),
 		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.ExecPath("/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"),
 	)
 
 	allocCtx, cancel := chromedp.NewExecAllocator(ctx, opts...)
@@ -46,6 +48,11 @@ func main() {
 		log.Fatalf("Failed to navigate to URL: %v", err)
 	}
 
-	// Print the HTML content
-	fmt.Println(htmlContent)
+	// Save the HTML content to a file
+	err = os.WriteFile("output.html", []byte(htmlContent), 0644)
+	if err != nil {
+		log.Fatalf("Failed to write HTML to file: %v", err)
+	}
+
+	fmt.Println("HTML content saved to output.html")
 }
