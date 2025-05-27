@@ -2,15 +2,40 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/chromedp/chromedp"
 	"github.com/markusmobius/go-trafilatura"
 )
+
+// OutputData はJSON出力用の構造体
+type OutputData struct {
+	Title         string    `json:"title,omitempty"`
+	Author        string    `json:"author,omitempty"`
+	URL           string    `json:"url,omitempty"`
+	Hostname      string    `json:"hostname,omitempty"`
+	Description   string    `json:"description,omitempty"`
+	Sitename      string    `json:"sitename,omitempty"`
+	Date          time.Time `json:"date,omitempty"` // time.Time 型に変更
+	Categories    []string  `json:"categories,omitempty"`
+	Tags          []string  `json:"tags,omitempty"`
+	ID            string    `json:"id,omitempty"`
+	Fingerprint   string    `json:"fingerprint,omitempty"`
+	License       string    `json:"license,omitempty"`
+	Language      string    `json:"language,omitempty"`
+	Image         string    `json:"image,omitempty"` // Metadata.Image を使用
+	PageType      string    `json:"page_type,omitempty"`
+	ContentText   string    `json:"content_text,omitempty"`
+	CommentsText  string    `json:"comments_text,omitempty"`
+	// Note: Multiple images and links are not directly available as simple lists in ExtractResult.
+	// Further processing of ContentNode or specific options might be needed.
+}
 
 func main() {
 	urlString := "https://news.google.com/rss/articles/CBMidkFVX3lxTFBGX1BCaFdpRmVGYkpmX3R4dGU3MG1rVEJVdXhMQ0NfZ1J3LWlNa2JCT0Q0SWJSZHVneVA0NlN6TkJsTnVITVJXSGh2elhBTGJXWENySlphX3RfUExRSVplbUtjVUNqRkpTcU1qVWVvemI1T1BVZkE?oc=5"
@@ -75,8 +100,42 @@ func main() {
 	}
 
 	if extracted != nil {
-		fmt.Println("Extracted Text:")
-		fmt.Println(extracted.ContentText)
+		// JSON出力用のデータ構造に詰め替える
+		output := OutputData{
+			ContentText:  extracted.ContentText,
+			CommentsText: extracted.CommentsText,
+
+			// extracted.Metadata はポインタではないため、nilチェックは不要
+			Title:       extracted.Metadata.Title,
+			Author:      extracted.Metadata.Author,
+			URL:         extracted.Metadata.URL,
+			Hostname:    extracted.Metadata.Hostname,
+			Description: extracted.Metadata.Description,
+			Sitename:    extracted.Metadata.Sitename,
+			Date:        extracted.Metadata.Date, // 直接代入
+			Categories:  extracted.Metadata.Categories,
+			Tags:        extracted.Metadata.Tags,
+			ID:          extracted.Metadata.ID,
+			Fingerprint: extracted.Metadata.Fingerprint,
+			License:     extracted.Metadata.License,
+			Language:    extracted.Metadata.Language,
+			Image:       extracted.Metadata.Image,
+			PageType:    extracted.Metadata.PageType,
+		}
+
+		// 抽出結果をJSONにマーシャリング
+		jsonData, err := json.MarshalIndent(output, "", "  ") // インデントして見やすくする
+		if err != nil {
+			log.Fatalf("Error marshalling to JSON: %v", err)
+		}
+
+		// JSONデータをファイルに書き込む
+		fileName := "extracted_content.json"
+		err = os.WriteFile(fileName, jsonData, 0644)
+		if err != nil {
+			log.Fatalf("Error writing JSON to file: %v", err)
+		}
+		fmt.Printf("Extracted content saved to %s\n", fileName)
 	} else {
 		fmt.Println("No content extracted.")
 	}
