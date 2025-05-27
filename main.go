@@ -67,23 +67,19 @@ func main() {
 	defer cancel()
 
 	var htmlContent string
-	log.Println("Fetching URL with chromedp...")
+	log.Println("Fetching URL with chromedp:", urlString)
 	err = chromedp.Run(ctx,
 		chromedp.Navigate(urlString),
-		// ページ遷移やJSによるコンテンツ読み込みのために5秒待機
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			log.Println("Waiting for 5 seconds after navigation...")
-			time.Sleep(5 * time.Second)
-			return nil
-		}),
-		// 必要であれば、特定の要素が表示されるまで待機するなどのアクションを追加
-		// chromedp.WaitVisible(`body`, chromedp.ByQuery),
+		// 記事の主要部分が表示されるまで待機 (例: <article> タグ)
+		// 適切なセレクタは対象のウェブサイトの構造によって調整が必要
+		chromedp.WaitVisible(`article`, chromedp.ByQuery),
 		chromedp.OuterHTML("html", &htmlContent), // ページ全体のHTMLを取得
 	)
 	if err != nil {
-		log.Fatalf("Chromedp error: %v", err)
+		// エラーハンドリング強化: どのURLで、どのchromedpアクションで失敗したかを示す
+		log.Fatalf("Chromedp actions (Navigate or WaitVisible for 'article') failed for URL %s: %v", urlString, err)
 	}
-	log.Println("HTML fetched successfully with chromedp.")
+	log.Println("HTML fetched successfully with chromedp from URL:", urlString)
 
 	// 取得したHTMLをio.Readerに変換
 	htmlReader := strings.NewReader(htmlContent)
@@ -96,7 +92,8 @@ func main() {
 	}
 	extracted, err := trafilatura.Extract(htmlReader, options)
 	if err != nil {
-		log.Fatalf("Error extracting content: %v", err)
+		// エラーハンドリング強化: どのURLでの抽出に失敗したかを示す
+		log.Fatalf("Error extracting content with trafilatura from URL %s: %v", urlString, err)
 	}
 
 	if extracted != nil {
